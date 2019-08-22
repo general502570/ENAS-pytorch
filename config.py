@@ -77,7 +77,7 @@ learn_arg.add_argument('--mode', type=str, default='train',
                        single: training one dag')
 learn_arg.add_argument('--batch_size', type=int, default=64)
 learn_arg.add_argument('--test_batch_size', type=int, default=1)
-learn_arg.add_argument('--max_epoch', type=int, default=150)
+learn_arg.add_argument('--max_epoch', type=int, default=10)#150)
 learn_arg.add_argument('--entropy_mode', type=str, default='reward', choices=['reward', 'regularizer'])
 
 
@@ -127,7 +127,7 @@ learn_arg.add_argument('--derive_num_sample', type=int, default=100)
 misc_arg = add_argument_group('Misc')
 misc_arg.add_argument('--load_path', type=str, default='')
 misc_arg.add_argument('--log_step', type=int, default=50)
-misc_arg.add_argument('--save_epoch', type=int, default=4)
+misc_arg.add_argument('--save_epoch', type=int, default=2)#4)
 misc_arg.add_argument('--max_save_num', type=int, default=4)
 misc_arg.add_argument('--log_level', type=str, default='INFO', choices=['INFO', 'DEBUG', 'WARN'])
 misc_arg.add_argument('--log_dir', type=str, default='logs')

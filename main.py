@@ -16,6 +16,7 @@ def main(args):  # pylint:disable=redefined-outer-name
     utils.prepare_dirs(args)
 
     torch.manual_seed(args.random_seed)
+    torch.cuda.set_device(2)
 
     if args.num_gpu > 0:
         torch.cuda.manual_seed(args.random_seed)

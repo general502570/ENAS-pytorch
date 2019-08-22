@@ -8,7 +8,8 @@ import json
 import logging
 
 import numpy as np
-import pygraphviz as pgv
+#import pygraphviz as pgv
+import pickle
 
 import torch
 from torch.autograd import Variable
@@ -21,12 +22,12 @@ from PIL import ImageDraw
 try:
     import scipy.misc
     imread = scipy.misc.imread
-    imresize = scipy.misc.imresize
+    #imresize = scipy.misc.imresize
     imsave = imwrite = scipy.misc.imsave
 except:
     import cv2
     imread = cv2.imread
-    imresize = cv2.imresize
+    #imresize = cv2.imresize
     imsave = imwrite = cv2.imwrite
 
 
@@ -61,7 +62,12 @@ def add_node(graph, node_id, label, shape='box', style='filled'):
     )
 
 def draw_network(dag, path):
+    # OOO
     makedirs(os.path.dirname(path))
+    f = open(path, "wb")
+    pickle.dump(dag, f)
+    return
+
     graph = pgv.AGraph(directed=True, strict=True,
                        fontname='Helvetica', arrowtype='open') # not work?
 
