@@ -8,6 +8,17 @@ from torch.autograd import Variable
 
 import collections
 
+class LockedDropout(nn.Module):
+    def __init__(self, dropo):
+        super().__init__()
+        self.dropo = dropo
+
+    def forward(self, x):
+        m = x.data.new(1, x.size(1)).bernoulli_(1 - self.dropo)
+        mask = Variable(m, requires_grad = False) / (1 - self.dropo)
+        mask = mask.expand_as(x)
+        return mask * x
+
 class CNN(nn.Module):
     """CNN model."""
     def __init__(self, args):
@@ -18,8 +29,11 @@ class CNN(nn.Module):
         self.conv5s = collections.defaultdict(dict)
         self.maxpools = collections.defaultdict(dict)
         self.meanpools = collections.defaultdict(dict)
+        self.fcs = collections.defaultdict(dict)
         self.pools = collections.defaultdict(dict)
         self.poollayers = []
+
+        self.lockdrop = LockedDropout(self.args.child_dropout)
 
         for i in range(self.args.layern):
             for j in range(0, self.args.noden):
@@ -35,14 +49,17 @@ class CNN(nn.Module):
                 self.meanpools[i][j] = nn.AvgPool2d(3,
                                                    stride = 1,
                                                    padding = 1)
+                self.fcs[i][j] = nn.Linear(3, 10)
             if i < self.args.layern - 1:
                 self.poollayers.append( nn.Conv2d(self.args.channels[i],
                                                   self.args.channels[i + 1],
                                                   2, stride = 2) )
 
         self.fc = nn.Linear(12, 10)
+        self.fc2 = nn.ModuleList([nn.Linear(3, 10)])
 
         
+
         self._conv3s = nn.ModuleList([self.conv3s[i][j]
                                    for i in self.conv3s
                                    for j in self.conv3s[i]])
@@ -55,6 +72,9 @@ class CNN(nn.Module):
         self._meanpools = nn.ModuleList([self.meanpools[i][j]
                                    for i in self.meanpools
                                    for j in self.meanpools[i]])
+        self._fcs = nn.ModuleList([self.fcs[i][j]
+                                   for i in self.fcs
+                                   for j in self.fcs[i]])
         
         self.convs = [self.conv3s, self.conv5s, self.maxpools, self.meanpools]
         self.pools = nn.ModuleList(self.poollayers)
@@ -68,12 +88,13 @@ class CNN(nn.Module):
                 self.batch_norm.append( None )
         self._batch_norm = nn.ModuleList(self.batch_norm)
 
-        #self.reset_parameters()
+        self.reset_parameters()
 
     def forward(self,
                 x,
                 dag,
                 is_train=True):
+        #print(x.size())
         time_steps = x.size(0)
         batch_size = x.size(1)
 
@@ -87,8 +108,12 @@ class CNN(nn.Module):
         for layer_id in range(self.args.layern):
             x = self.layer(x, dag, layer_id)
             x = self.pooling_layer(x, layer_id)
+        #x = self.pooling_layer(x, self.args.layern - 1)
 
+        if self.args.child_dropout > 0:
+            x = self.lockdrop(x)
         x = self.fc(x)
+        #x = self._fcs[0](x)
         return x
 
     def pooling_layer(self, x, layer_id):
@@ -97,7 +122,7 @@ class CNN(nn.Module):
         if layer_id < self.args.layern - 1:
             ins = self.pools[layer_id](x)
             if len(self.batch_norm) != 0:
-                ins = self.batch_norm[layer_id + 1](ins)
+                ins = self._batch_norm[layer_id + 1](ins)
         else:
             # assuming NCHW
             ins = torch.mean(x, (2, 3))
@@ -132,7 +157,15 @@ class CNN(nn.Module):
         """
         #print(x.size())
         if conv_type < len(self.convs):
-            conv_f = self.convs[conv_type][layer_id][conv_id]
+            #conv_f = self.convs[conv_type][layer_id][conv_id]
+            if conv_type == 0:
+                conv_f = self._conv3s[layer_id * self.args.noden + conv_id]
+            elif conv_type == 1:
+                conv_f = self._conv5s[layer_id * self.args.noden + conv_id]
+            elif conv_type == 2:
+                conv_f = self._maxpools[layer_id * self.args.noden + conv_id]
+            elif conv_type == 3:
+                conv_f = self._meanpools[layer_id * self.args.noden + conv_id]
             output = conv_f(x)
             output = F.relu(output)
         else:
@@ -175,7 +208,7 @@ class CNN(nn.Module):
         return num
 
     def reset_parameters(self):
-        init_range = 0.025 if self.args.mode == 'train' else 0.04
+        init_range = 0.25 if self.args.mode == 'train' else 0.4
         for param in self.parameters():
             param.data.uniform_(-init_range, init_range)
-        self.decoder.bias.data.fill_(0)
+        self.fc.bias.data.fill_(0)
