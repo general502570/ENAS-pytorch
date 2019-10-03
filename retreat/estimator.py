@@ -51,7 +51,6 @@ class Estimator(torch.nn.Module):
     
     def Clean_data(self, dags):
         """Make the data useful"""
-        print("clean")
         feats = []
         nodes1 = []
         nodes2 = []
