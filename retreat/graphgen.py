@@ -324,7 +324,7 @@ class GraphGen():
         correct = 0
 
         for inp, edg, acc in zip(self.train_inputs, self.train_edges, self.train_accss):
-            #for inp, edg, acc in zip(self.test_inputs, self.test_edges, self.test_accss):
+            #for111 inp, edg, acc in zip(self.test_inputs, self.test_edges, self.test_accss):
             outp = self.estim(inp, edg)
             #a = outp[0].data
             #a.tolist()
